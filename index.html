@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Monitoring Tangki</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f3f3f3;
+      padding: 20px;
+      text-align: center;
+    }
+    h1 { color: #2c3e50; }
+    .data-box {
+      display: inline-block;
+      margin: 20px;
+      padding: 20px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      font-size: 24px;
+      width: 250px;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>Monitoring Tangki Air</h1>
+
+  <div class="data-box" id="tinggi">Tinggi: -- mm</div>
+  <div class="data-box" id="volume">Volume: -- L</div>
+  <div class="data-box" id="suhu">Suhu: -- °C</div>
+
+  <script>
+    const options = {
+      hostname: "5c1d62686f12469db9b0c899fffe1efe.s1.eu.hivemq.cloud",
+      port: 8884,
+      protocol: "wss",
+      username: "Marcellino",
+      password: "Bintang46",
+      clientId: "webClient_" + Math.random().toString(16).substr(2, 8),
+      rejectUnauthorized: false
+    };
+
+    const client = mqtt.connect(`wss://${options.hostname}:${options.port}/mqtt`, {
+      username: options.username,
+      password: options.password,
+      clientId: options.clientId,
+      rejectUnauthorized: options.rejectUnauthorized
+    });
+
+    client.on("connect", function () {
+      console.log("✅ Terhubung ke broker MQTT!");
+      client.subscribe("wemos123/sensor/#");
+    });
+
+    client.on("message", function (topic, message) {
+      const value = message.toString();
+      if (topic.endsWith("jarak_rata")) {
+        document.getElementById("tinggi").innerText = `Tinggi: ${value} mm`;
+      } else if (topic.endsWith("volume_avg")) {
+        document.getElementById("volume").innerText = `Volume: ${value} L`;
+      } else if (topic.endsWith("suhu")) {
+        document.getElementById("suhu").innerText = `Suhu: ${value} °C`;
+      }
+    });
+
+    client.on("error", function (err) {
+      console.error("❌ Error:", err);
+    });
+  </script>
+
+</body>
+</html>
