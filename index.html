@@ -58,7 +58,7 @@
     client.on("message", function (topic, message) {
       const value = message.toString();
       if (topic.endsWith("jarak_rata")) {
-        document.getElementById("tinggi").innerText = `Tinggi: ${value} mm`;
+        document.getElementById("tinggi").innerText = `Tinggi: ${value} cm`;
       } else if (topic.endsWith("volume_avg")) {
         document.getElementById("volume").innerText = `Volume: ${value} L`;
       } else if (topic.endsWith("suhu")) {
