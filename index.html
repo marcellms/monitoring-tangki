@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
   <meta charset="UTF-8">
   <title>Monitoring Tangki Realtime</title>
@@ -94,6 +94,10 @@
       client.subscribe("wemos123/sensor/#");
     });
 
+    client.on("reconnect", () => {
+      document.getElementById("status").innerText = "🔄 Mencoba reconnect MQTT...";
+    });
+
     client.on("error", (err) => {
       document.getElementById("status").innerText = "❌ Error koneksi MQTT!";
       console.error("❌ MQTT Error:", err);
@@ -111,15 +115,19 @@
           backgroundColor: 'rgba(230, 126, 34, 0.2)',
           borderWidth: 2,
           fill: true,
-          tension: 0.3
+          tension: 0.4
         }]
       },
       options: {
         responsive: true,
+        animation: false,
         scales: {
           x: {
             type: 'time',
-            time: { unit: 'second', tooltipFormat: 'HH:mm:ss' },
+            time: {
+              unit: 'second',
+              tooltipFormat: 'HH:mm:ss'
+            },
             title: { display: true, text: 'Waktu' }
           },
           y: {
@@ -141,7 +149,7 @@
       const now = new Date();
       const limit = limitTime();
 
-      if (topic.endsWith("volume_avg")) {
+      if (topic === "wemos123/sensor/volume_avg") {
         chartVolume.data.labels.push(now);
         chartVolume.data.datasets[0].data.push(value);
         while (chartVolume.data.labels[0] < limit) {
@@ -157,7 +165,7 @@
         ).reverse().join('');
       }
 
-      if (topic.endsWith("jarak_rata")) {
+      if (topic === "wemos123/sensor/jarak_rata") {
         logTinggi.push({ time: now, value });
         while (logTinggi[0] && logTinggi[0].time < limit) logTinggi.shift();
         document.getElementById("logTinggi").innerHTML = logTinggi.map(d =>
@@ -165,7 +173,7 @@
         ).reverse().join('');
       }
 
-      if (topic.endsWith("suhu")) {
+      if (topic === "wemos123/sensor/suhu") {
         logSuhu.push({ time: now, value });
         while (logSuhu[0] && logSuhu[0].time < limit) logSuhu.shift();
         document.getElementById("logSuhu").innerHTML = logSuhu.map(d =>
