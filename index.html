@@ -43,7 +43,7 @@
       rejectUnauthorized: false
     };
 
-    const client = mqtt.connect(wss://${options.hostname}:${options.port}/mqtt, {
+    const client = mqtt.connect(`wss://${options.hostname}:${options.port}/mqtt`, {
       username: options.username,
       password: options.password,
       clientId: options.clientId,
@@ -58,11 +58,11 @@
     client.on("message", function (topic, message) {
       const value = message.toString();
       if (topic.endsWith("jarak_rata")) {
-        document.getElementById("tinggi").innerText = Tinggi: ${value} cm;
+        document.getElementById("tinggi").innerText = `Tinggi: ${value} mm`;
       } else if (topic.endsWith("volume_avg")) {
-        document.getElementById("volume").innerText = Volume: ${value} L;
+        document.getElementById("volume").innerText = `Volume: ${value} L`;
       } else if (topic.endsWith("suhu")) {
-        document.getElementById("suhu").innerText = Suhu: ${value} °C;
+        document.getElementById("suhu").innerText = `Suhu: ${value} °C`;
       }
     });
 
