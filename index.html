@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Monitoring Tangki BBM HVE</title>
+  <title>Dashboard Monitoring Tangki HVE</title> 
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -80,7 +80,7 @@
 </head>
 <body>
 
-<h1>📊 Monitoring Tangki BBM HVE</h1>
+<h1>📊 Dashboard Monitoring Tangki</h1>
 
 <div class="status" id="status">🔄 Menyambungkan ke MQTT...</div>
 
@@ -154,51 +154,36 @@
   const ctxVolume = document.getElementById("volumeChart").getContext("2d");
   const ctxSuhu = document.getElementById("suhuChart").getContext("2d");
 
-  const chartOptions = {
-    responsive: true,
-    scales: {
-      x: {
-        type: 'time',
-        time: {
-          unit: 'minute',
-          stepSize: 10,
-          displayFormats: { minute: 'HH:mm' }
-        },
-        title: { display: true, text: 'Waktu' }
-      }
-    }
-  };
-
   const tinggiChart = new Chart(ctxTinggi, {
     type: 'line',
     data: { labels: [], datasets: [{ label: 'Tinggi (cm)', data: [], borderColor: 'blue' }] },
-    options: chartOptions
+    options: { scales: { x: { title: { display: true, text: 'Waktu' } } }, responsive: true }
   });
 
   const volumeChart = new Chart(ctxVolume, {
     type: 'line',
     data: { labels: [], datasets: [{ label: 'Volume (L)', data: [], borderColor: 'green' }] },
-    options: chartOptions
+    options: { scales: { x: { title: { display: true, text: 'Waktu' } } }, responsive: true }
   });
 
   const suhuChart = new Chart(ctxSuhu, {
     type: 'line',
     data: { labels: [], datasets: [{ label: 'Suhu (°C)', data: [], borderColor: 'orange' }] },
-    options: chartOptions
+    options: { scales: { x: { title: { display: true, text: 'Waktu' } } }, responsive: true }
   });
 
   function updateCharts() {
-    const waktu = new Date();
+    const waktu = new Date().toLocaleTimeString();
 
     pushData(tinggiChart, waktu, tinggi);
     pushData(volumeChart, waktu, volume);
     pushData(suhuChart, waktu, suhu);
   }
 
-  function pushData(chart, waktu, value) {
-    chart.data.labels.push(waktu);
+  function pushData(chart, label, value) {
+    chart.data.labels.push(label);
     chart.data.datasets[0].data.push(value);
-    if (chart.data.labels.length > 50) {
+    if (chart.data.labels.length > 30) {
       chart.data.labels.shift();
       chart.data.datasets[0].data.shift();
     }
