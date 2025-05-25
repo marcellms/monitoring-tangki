@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard Monitoring Tangki HVE</title>
+  <title>Dashboard Monitoring Tangki</title>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -62,6 +62,10 @@
       border-radius: 6px;
       cursor: pointer;
     }
+    .value-now {
+      font-weight: bold;
+      margin-bottom: 5px;
+    }
   </style>
 </head>
 <body>
@@ -72,12 +76,15 @@
 
 <div class="chart-container">
   <div class="chart-box">
+    <div id="jarakNow" class="value-now">Jarak Sekarang: - cm</div>
     <canvas id="jarakChart"></canvas>
   </div>
   <div class="chart-box">
+    <div id="volumeNow" class="value-now">Volume Sekarang: - L</div>
     <canvas id="volumeChart"></canvas>
   </div>
   <div class="chart-box">
+    <div id="suhuNow" class="value-now">Suhu Sekarang: - °C</div>
     <canvas id="suhuChart"></canvas>
   </div>
 </div>
@@ -107,12 +114,14 @@
   const status = document.getElementById("status");
   const logTable = document.getElementById("logTable").getElementsByTagName("tbody")[0];
 
+  let jarak = 0, volume = 0, suhu = 0, volumeIsi = 0;
+  let lastChartUpdateTime = 0;
+  const chartUpdateInterval = 30 * 60 * 1000; // 30 menit dalam ms
+
   client.on("connect", () => {
     status.innerHTML = "✅ MQTT Terhubung!";
     client.subscribe("wemos123/sensor/#");
   });
-
-  let jarak = 0, volume = 0, suhu = 0, volumeIsi = 0;
 
   client.on("message", (topic, message) => {
     const val = parseFloat(message.toString());
@@ -121,29 +130,34 @@
     if (topic.endsWith("suhu")) suhu = val;
     if (topic.endsWith("volume_pengisian")) volumeIsi = val;
 
-    updateCharts();
+    updateValueDisplays();
     updateTable();
+
+    const now = Date.now();
+    if (now - lastChartUpdateTime > chartUpdateInterval) {
+      updateCharts();
+      lastChartUpdateTime = now;
+    }
   });
 
   // Chart.js setup
-  const ctxJarak = document.getElementById("jarakChart").getContext("2d");
-  const ctxVolume = document.getElementById("volumeChart").getContext("2d");
-  const ctxSuhu = document.getElementById("suhuChart").getContext("2d");
-
   const labels = Array.from({length: 20}, (_, i) => i+1);
 
+  const ctxJarak = document.getElementById("jarakChart").getContext("2d");
   const jarakChart = new Chart(ctxJarak, {
     type: 'line',
     data: { labels, datasets: [{ label: 'Jarak (cm)', data: [], borderColor: 'blue' }] },
     options: { responsive: true }
   });
 
+  const ctxVolume = document.getElementById("volumeChart").getContext("2d");
   const volumeChart = new Chart(ctxVolume, {
     type: 'line',
     data: { labels, datasets: [{ label: 'Volume (L)', data: [], borderColor: 'green' }] },
     options: { responsive: true }
   });
 
+  const ctxSuhu = document.getElementById("suhuChart").getContext("2d");
   const suhuChart = new Chart(ctxSuhu, {
     type: 'line',
     data: { labels, datasets: [{ label: 'Suhu (°C)', data: [], borderColor: 'orange' }] },
@@ -160,6 +174,12 @@
     chart.data.datasets[0].data.push(value);
     if (chart.data.datasets[0].data.length > 20) chart.data.datasets[0].data.shift();
     chart.update();
+  }
+
+  function updateValueDisplays() {
+    document.getElementById("jarakNow").innerText = `Jarak Sekarang: ${jarak.toFixed(2)} cm`;
+    document.getElementById("volumeNow").innerText = `Volume Sekarang: ${volume.toFixed(2)} L`;
+    document.getElementById("suhuNow").innerText = `Suhu Sekarang: ${suhu.toFixed(2)} °C`;
   }
 
   function updateTable() {
