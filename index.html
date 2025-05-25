@@ -3,171 +3,109 @@
 <head>
   <meta charset="UTF-8">
   <title>Dashboard Monitoring Tangki</title>
-  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f4f4f9;
-      color: #333;
-      padding: 20px;
+    body { font-family: sans-serif; margin: 20px; background: #f5f5f5; }
+    h1 { text-align: center; }
+    .data-box { display: flex; justify-content: space-around; margin: 20px 0; }
+    .card {
+      background: #fff; padding: 20px; border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1); text-align: center; flex: 1;
+      margin: 0 10px;
     }
-    h1 {
-      text-align: center;
-      color: #333;
-    }
-    .status {
-      text-align: center;
-      margin-bottom: 20px;
-      font-size: 18px;
-    }
-    canvas {
-      max-width: 600px;
-      margin: 20px auto;
-      display: block;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      margin-top: 20px;
-    }
-    table, th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
-    }
-    th {
-      background: #eee;
-    }
-    button {
-      margin-top: 10px;
-      padding: 8px 16px;
-      background: #4CAF50;
-      color: white;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-    }
+    canvas { background: #fff; border-radius: 12px; padding: 10px; }
   </style>
 </head>
 <body>
 
-<h1>📊 Dashboard Monitoring Tangki</h1>
+<h1>📊 Dashboard Tangki Air</h1>
 
-<div class="status" id="status">🔄 Menyambungkan ke MQTT...</div>
+<div class="data-box">
+  <div class="card">
+    <h2>📏 Tinggi</h2>
+    <p id="jarak_now">0.00 cm</p>
+  </div>
+  <div class="card">
+    <h2>💧 Volume</h2>
+    <p id="volume_now">0.00 L</p>
+  </div>
+  <div class="card">
+    <h2>🌡 Suhu</h2>
+    <p id="suhu_now">0.00 °C</p>
+  </div>
+</div>
 
-<canvas id="jarakChart"></canvas>
-<canvas id="volumeChart"></canvas>
-<canvas id="suhuChart"></canvas>
-
-<h2>📄 Log Data Realtime</h2>
-<table id="logTable">
-  <thead>
-    <tr>
-      <th>Waktu</th>
-      <th>Jarak (cm)</th>
-      <th>Volume (L)</th>
-      <th>Suhu (°C)</th>
-      <th>Volume Isi (L)</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
-
-<button onclick="exportTableToCSV()">⬇️ Export CSV</button>
+<h2>Grafik Realtime</h2>
+<canvas id="jarakChart" height="150"></canvas>
+<canvas id="volumeChart" height="150"></canvas>
+<canvas id="suhuChart" height="150"></canvas>
 
 <script>
-  const client = mqtt.connect("wss://5c1d62686f12469db9b0c899fffe1efe.s1.eu.hivemq.cloud:8884/mqtt", {
-    username: "Marcellino",
-    password: "Bintang46"
-  });
+const ctxJarak = document.getElementById('jarakChart').getContext('2d');
+const ctxVolume = document.getElementById('volumeChart').getContext('2d');
+const ctxSuhu = document.getElementById('suhuChart').getContext('2d');
 
-  const status = document.getElementById("status");
-  const logTable = document.getElementById("logTable").getElementsByTagName("tbody")[0];
+const labels = Array.from({length: 30}, (_, i) => '');
 
-  client.on("connect", () => {
-    status.innerHTML = "✅ MQTT Terhubung!";
-    client.subscribe("wemos123/sensor/#");
-  });
-
-  let jarak = 0, volume = 0, suhu = 0, volumeIsi = 0;
-
-  client.on("message", (topic, message) => {
-    const val = parseFloat(message.toString());
-    if (topic.endsWith("jarak_rata")) jarak = val;
-    if (topic.endsWith("volume_avg")) volume = val;
-    if (topic.endsWith("suhu")) suhu = val;
-    if (topic.endsWith("volume_pengisian")) volumeIsi = val;
-
-    updateCharts();
-    updateTable();
-  });
-
-  // Chart.js setup
-  const ctxJarak = document.getElementById("jarakChart").getContext("2d");
-  const ctxVolume = document.getElementById("volumeChart").getContext("2d");
-  const ctxSuhu = document.getElementById("suhuChart").getContext("2d");
-
-  const labels = Array.from({length: 20}, (_, i) => i+1);
-
-  const jarakChart = new Chart(ctxJarak, {
-    type: 'line',
-    data: { labels, datasets: [{ label: 'Jarak (cm)', data: [], borderColor: 'blue' }] },
-    options: { responsive: true }
-  });
-
-  const volumeChart = new Chart(ctxVolume, {
-    type: 'line',
-    data: { labels, datasets: [{ label: 'Volume (L)', data: [], borderColor: 'green' }] },
-    options: { responsive: true }
-  });
-
-  const suhuChart = new Chart(ctxSuhu, {
-    type: 'line',
-    data: { labels, datasets: [{ label: 'Suhu (°C)', data: [], borderColor: 'orange' }] },
-    options: { responsive: true }
-  });
-
-  function updateCharts() {
-    pushData(jarakChart, jarak);
-    pushData(volumeChart, volume);
-    pushData(suhuChart, suhu);
+const jarakChart = new Chart(ctxJarak, {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{ label: 'Tinggi (cm)', data: [], borderColor: 'blue', tension: 0.4 }]
+  },
+  options: {
+    responsive: true,
+    scales: { y: { suggestedMin: 0, suggestedMax: 150 } }
   }
+});
 
-  function pushData(chart, value) {
-    chart.data.datasets[0].data.push(value);
-    if (chart.data.datasets[0].data.length > 20) chart.data.datasets[0].data.shift();
-    chart.update();
+const volumeChart = new Chart(ctxVolume, {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{ label: 'Volume (L)', data: [], borderColor: 'green', tension: 0.4 }]
+  },
+  options: {
+    responsive: true,
+    scales: { y: { suggestedMin: 0, suggestedMax: 100 } }
   }
+});
 
-  function updateTable() {
-    const waktu = new Date().toLocaleTimeString();
-    const row = logTable.insertRow(0);
-    row.insertCell(0).innerText = waktu;
-    row.insertCell(1).innerText = jarak.toFixed(2);
-    row.insertCell(2).innerText = volume.toFixed(2);
-    row.insertCell(3).innerText = suhu.toFixed(2);
-    row.insertCell(4).innerText = volumeIsi.toFixed(2);
-    if (logTable.rows.length > 20) logTable.deleteRow(20);
+const suhuChart = new Chart(ctxSuhu, {
+  type: 'line',
+  data: {
+    labels: labels,
+    datasets: [{ label: 'Suhu (°C)', data: [], borderColor: 'orange', tension: 0.4 }]
+  },
+  options: {
+    responsive: true,
+    scales: { y: { suggestedMin: 20, suggestedMax: 50 } }
   }
+});
 
-  function exportTableToCSV() {
-    const table = document.getElementById("logTable");
-    let csv = [];
-    for (let i = 0; i < table.rows.length; i++) {
-      const row = [], cols = table.rows[i].querySelectorAll("td, th");
-      for (let j = 0; j < cols.length; j++)
-        row.push('"' + cols[j].innerText + '"');
-      csv.push(row.join(","));
-    }
-    const csvFile = new Blob([csv.join("\n")], { type: "text/csv" });
-    const downloadLink = document.createElement("a");
-    downloadLink.download = "log_data_tangki.csv";
-    downloadLink.href = window.URL.createObjectURL(csvFile);
-    downloadLink.style.display = "none";
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
+// Simulasi data MQTT masuk (ganti dengan WebSocket/MQTT client asli nanti)
+setInterval(() => {
+  const jarak = (Math.random() * 130 + 10).toFixed(2);
+  const volume = (Math.random() * 80 + 5).toFixed(2);
+  const suhu = (Math.random() * 10 + 25).toFixed(2);
+
+  document.getElementById('jarak_now').innerText = `${jarak} cm`;
+  document.getElementById('volume_now').innerText = `${volume} L`;
+  document.getElementById('suhu_now').innerText = `${suhu} °C`;
+
+  updateChart(jarakChart, jarak);
+  updateChart(volumeChart, volume);
+  updateChart(suhuChart, suhu);
+
+}, 1000);
+
+function updateChart(chart, value) {
+  if (chart.data.datasets[0].data.length >= 30) {
+    chart.data.datasets[0].data.shift();
   }
+  chart.data.datasets[0].data.push(value);
+  chart.update();
+}
 </script>
 
 </body>
