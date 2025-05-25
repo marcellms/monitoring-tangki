@@ -72,6 +72,7 @@
   </div>
 
   <script>
+    // MQTT Broker Config
     const options = {
       hostname: "5c1d62686f12469db9b0c899fffe1efe.s1.eu.hivemq.cloud",
       port: 8884,
@@ -89,6 +90,7 @@
       rejectUnauthorized: options.rejectUnauthorized
     });
 
+    // MQTT Connection Status
     client.on("connect", () => {
       document.getElementById("status").innerText = "✅ Terkoneksi ke MQTT!";
       client.subscribe("wemos123/sensor/#");
@@ -103,6 +105,7 @@
       console.error("❌ MQTT Error:", err);
     });
 
+    // Chart.js Setup
     const ctxVolume = document.getElementById('chartVolume').getContext('2d');
     const chartVolume = new Chart(ctxVolume, {
       type: 'line',
@@ -141,9 +144,11 @@
       }
     });
 
+    // Log Data Array
     const logVolume = [], logTinggi = [], logSuhu = [];
-    const limitTime = () => new Date(new Date().getTime() - 5 * 60 * 1000);
+    const limitTime = () => new Date(new Date().getTime() - 5 * 60 * 1000); // 5 menit ke belakang
 
+    // Handle MQTT Message
     client.on("message", (topic, message) => {
       const value = parseFloat(message.toString());
       const now = new Date();
