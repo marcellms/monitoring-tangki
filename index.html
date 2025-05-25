@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <title>Dashboard Monitoring Tangki</title>
+  <title>Dashboard Monitoring Tangki HVE</title> 
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
@@ -21,11 +21,6 @@
       margin-bottom: 20px;
       font-size: 18px;
     }
-    .value-now {
-      text-align: center;
-      margin-bottom: 20px;
-      font-size: 16px;
-    }
     .chart-container {
       display: flex;
       flex-wrap: wrap;
@@ -40,7 +35,7 @@
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
       flex: 1;
       min-width: 300px;
-      max-width: 400px;
+      max-width: 450px;
     }
     canvas {
       width: 100%;
@@ -67,6 +62,20 @@
       border-radius: 6px;
       cursor: pointer;
     }
+    .current-values {
+      display: flex;
+      justify-content: space-around;
+      margin: 20px 0;
+      font-size: 18px;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .current-values div {
+      background: #fff;
+      padding: 12px 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 6px rgba(0,0,0,0.1);
+    }
   </style>
 </head>
 <body>
@@ -75,10 +84,11 @@
 
 <div class="status" id="status">🔄 Menyambungkan ke MQTT...</div>
 
-<div class="value-now">
-  <p id="tinggiNow">Tinggi Sekarang: 0 cm</p>
-  <p id="volumeNow">Volume Sekarang: 0 L</p>
-  <p id="suhuNow">Suhu Sekarang: 0 °C</p>
+<div class="current-values">
+  <div>🌡️ Suhu: <span id="suhuNow">0</span> °C</div>
+  <div>📏 Tinggi: <span id="tinggiNow">0</span> cm</div>
+  <div>🛢️ Volume: <span id="volumeNow">0</span> L</div>
+  <div>⚙️ Volume Isi: <span id="volumeIsiNow">0</span> L</div>
 </div>
 
 <div class="chart-container">
@@ -93,7 +103,7 @@
   </div>
 </div>
 
-<h2>📄 Log Data Realtime</h2>
+<h2>📄 Log Data (Tiap 5 Menit)</h2>
 <table id="logTable">
   <thead>
     <tr>
@@ -117,13 +127,17 @@
 
   const status = document.getElementById("status");
   const logTable = document.getElementById("logTable").getElementsByTagName("tbody")[0];
+  const suhuNow = document.getElementById("suhuNow");
+  const tinggiNow = document.getElementById("tinggiNow");
+  const volumeNow = document.getElementById("volumeNow");
+  const volumeIsiNow = document.getElementById("volumeIsiNow");
+
+  let tinggi = 0, volume = 0, suhu = 0, volumeIsi = 0;
 
   client.on("connect", () => {
     status.innerHTML = "✅ MQTT Terhubung!";
     client.subscribe("wemos123/sensor/#");
   });
-
-  let tinggi = 0, volume = 0, suhu = 0, volumeIsi = 0;
 
   client.on("message", (topic, message) => {
     const val = parseFloat(message.toString());
@@ -134,108 +148,85 @@
 
     updateValueDisplays();
     updateCharts();
-    updateTable();
   });
 
-  // Chart.js setup
   const ctxTinggi = document.getElementById("tinggiChart").getContext("2d");
   const ctxVolume = document.getElementById("volumeChart").getContext("2d");
   const ctxSuhu = document.getElementById("suhuChart").getContext("2d");
 
   const tinggiChart = new Chart(ctxTinggi, {
     type: 'line',
-    data: {
-      labels: [],
-      datasets: [{ label: 'Tinggi (cm)', data: [], borderColor: 'blue' }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { title: { display: true, text: 'Waktu' } }
-      }
-    }
+    data: { labels: [], datasets: [{ label: 'Tinggi (cm)', data: [], borderColor: 'blue' }] },
+    options: { scales: { x: { title: { display: true, text: 'Waktu' } } }, responsive: true }
   });
 
   const volumeChart = new Chart(ctxVolume, {
     type: 'line',
-    data: {
-      labels: [],
-      datasets: [{ label: 'Volume (L)', data: [], borderColor: 'green' }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { title: { display: true, text: 'Waktu' } }
-      }
-    }
+    data: { labels: [], datasets: [{ label: 'Volume (L)', data: [], borderColor: 'green' }] },
+    options: { scales: { x: { title: { display: true, text: 'Waktu' } } }, responsive: true }
   });
 
   const suhuChart = new Chart(ctxSuhu, {
     type: 'line',
-    data: {
-      labels: [],
-      datasets: [{ label: 'Suhu (°C)', data: [], borderColor: 'orange' }]
-    },
-    options: {
-      responsive: true,
-      scales: {
-        x: { title: { display: true, text: 'Waktu' } }
-      }
-    }
+    data: { labels: [], datasets: [{ label: 'Suhu (°C)', data: [], borderColor: 'orange' }] },
+    options: { scales: { x: { title: { display: true, text: 'Waktu' } } }, responsive: true }
   });
 
-  function updateValueDisplays() {
-    document.getElementById("tinggiNow").innerText = `Tinggi Sekarang: ${tinggi.toFixed(2)} cm`;
-    document.getElementById("volumeNow").innerText = `Volume Sekarang: ${volume.toFixed(2)} L`;
-    document.getElementById("suhuNow").innerText = `Suhu Sekarang: ${suhu.toFixed(2)} °C`;
-  }
-
   function updateCharts() {
-    const now = new Date().toLocaleTimeString();
+    const waktu = new Date().toLocaleTimeString();
 
-    pushData(tinggiChart, tinggi, now);
-    pushData(volumeChart, volume, now);
-    pushData(suhuChart, suhu, now);
+    pushData(tinggiChart, waktu, tinggi);
+    pushData(volumeChart, waktu, volume);
+    pushData(suhuChart, waktu, suhu);
   }
 
-  function pushData(chart, value, label) {
+  function pushData(chart, label, value) {
     chart.data.labels.push(label);
     chart.data.datasets[0].data.push(value);
-    if (chart.data.labels.length > 60) {
+    if (chart.data.labels.length > 30) {
       chart.data.labels.shift();
       chart.data.datasets[0].data.shift();
     }
     chart.update();
   }
 
-  function updateTable() {
-    const waktu = new Date().toLocaleTimeString();
-    const row = logTable.insertRow(0);
-    row.insertCell(0).innerText = waktu;
-    row.insertCell(1).innerText = tinggi.toFixed(2);
-    row.insertCell(2).innerText = volume.toFixed(2);
-    row.insertCell(3).innerText = suhu.toFixed(2);
-    row.insertCell(4).innerText = volumeIsi.toFixed(2);
-    if (logTable.rows.length > 20) logTable.deleteRow(20);
+  function updateValueDisplays() {
+    suhuNow.innerText = suhu.toFixed(2);
+    tinggiNow.innerText = tinggi.toFixed(2);
+    volumeNow.innerText = volume.toFixed(2);
+    volumeIsiNow.innerText = volumeIsi.toFixed(2);
   }
+
+  function updateTable() {
+    const now = new Date();
+    const menit = now.getMinutes();
+    if (menit % 5 === 0 && now.getSeconds() === 0) {
+      const waktu = now.toLocaleTimeString();
+      const row = logTable.insertRow(0);
+      row.insertCell(0).innerText = waktu;
+      row.insertCell(1).innerText = tinggi.toFixed(2);
+      row.insertCell(2).innerText = volume.toFixed(2);
+      row.insertCell(3).innerText = suhu.toFixed(2);
+      row.insertCell(4).innerText = volumeIsi.toFixed(2);
+      if (logTable.rows.length > 20) logTable.deleteRow(20);
+    }
+  }
+
+  setInterval(updateTable, 1000);
 
   function exportTableToCSV() {
     const table = document.getElementById("logTable");
     let csv = [];
     for (let i = 0; i < table.rows.length; i++) {
       const row = [], cols = table.rows[i].querySelectorAll("td, th");
-      for (let j = 0; j < cols.length; j++)
-        row.push('"' + cols[j].innerText + '"');
+      for (let j = 0; j < cols.length; j++) row.push('"' + cols[j].innerText + '"');
       csv.push(row.join(","));
     }
     const csvFile = new Blob([csv.join("\n")], { type: "text/csv" });
     const downloadLink = document.createElement("a");
     downloadLink.download = "log_data_tangki.csv";
     downloadLink.href = window.URL.createObjectURL(csvFile);
-    downloadLink.style.display = "none";
-    document.body.appendChild(downloadLink);
     downloadLink.click();
-    document.body.removeChild(downloadLink);
   }
 </script>
 
