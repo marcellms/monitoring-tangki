@@ -2,35 +2,74 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Monitoring Tangki</title>
+  <title>Monitoring Tangki Realtime</title>
   <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       background: #f3f3f3;
       padding: 20px;
       text-align: center;
     }
-    h1 { color: #2c3e50; }
-    .data-box {
-      display: inline-block;
-      margin: 20px;
-      padding: 20px;
-      background: white;
+    h1 {
+      color: #34495e;
+      margin-bottom: 10px;
+    }
+    .status {
+      margin: 10px 0;
+      font-weight: bold;
+    }
+    canvas {
+      background: #fff;
+      border-radius: 14px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.1);
+      padding: 10px;
+      margin-top: 20px;
+    }
+    .log {
+      text-align: left;
+      margin: 30px auto;
+      padding: 15px;
+      background: #fff;
       border-radius: 10px;
+      width: 80%;
+      max-width: 600px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
-      font-size: 24px;
-      width: 250px;
+      overflow-y: auto;
+      max-height: 300px;
+    }
+    .log h2 {
+      margin-top: 0;
+      color: #2c3e50;
+    }
+    .log ul {
+      padding-left: 20px;
+    }
+    .log li {
+      margin: 5px 0;
+      font-size: 16px;
     }
   </style>
 </head>
 <body>
 
-  <h1>Monitoring Tangki HVE</h1>
+  <h1>📊 Monitoring Tangki Realtime</h1>
+  <div class="status" id="status">🔌 Menghubungkan ke MQTT...</div>
+  <canvas id="chartVolume" height="120"></canvas>
 
-  <div class="data-box" id="tinggi">Tinggi: -- mm</div>
-  <div class="data-box" id="volume">Volume: -- L</div>
-  <div class="data-box" id="suhu">Suhu: -- °C</div>
+  <div class="log">
+    <h2>📄 Log Volume</h2>
+    <ul id="logVolume"></ul>
+  </div>
+  <div class="log">
+    <h2>📄 Log Tinggi</h2>
+    <ul id="logTinggi"></ul>
+  </div>
+  <div class="log">
+    <h2>📄 Log Suhu</h2>
+    <ul id="logSuhu"></ul>
+  </div>
 
   <script>
     const options = {
@@ -50,24 +89,89 @@
       rejectUnauthorized: options.rejectUnauthorized
     });
 
-    client.on("connect", function () {
-      console.log("✅ Terhubung ke broker MQTT!");
+    client.on("connect", () => {
+      document.getElementById("status").innerText = "✅ Terkoneksi ke MQTT!";
       client.subscribe("wemos123/sensor/#");
     });
 
-    client.on("message", function (topic, message) {
-      const value = message.toString();
-      if (topic.endsWith("jarak_rata")) {
-        document.getElementById("tinggi").innerText = `Tinggi: ${value} cm`;
-      } else if (topic.endsWith("volume_avg")) {
-        document.getElementById("volume").innerText = `Volume: ${value} L`;
-      } else if (topic.endsWith("suhu")) {
-        document.getElementById("suhu").innerText = `Suhu: ${value} °C`;
+    client.on("error", (err) => {
+      document.getElementById("status").innerText = "❌ Error koneksi MQTT!";
+      console.error("❌ MQTT Error:", err);
+    });
+
+    const ctxVolume = document.getElementById('chartVolume').getContext('2d');
+    const chartVolume = new Chart(ctxVolume, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: 'Volume (L)',
+          data: [],
+          borderColor: '#e67e22',
+          backgroundColor: 'rgba(230, 126, 34, 0.2)',
+          borderWidth: 2,
+          fill: true,
+          tension: 0.3
+        }]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: {
+            type: 'time',
+            time: { unit: 'second', tooltipFormat: 'HH:mm:ss' },
+            title: { display: true, text: 'Waktu' }
+          },
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Volume (L)' }
+          }
+        },
+        plugins: {
+          legend: { display: false }
+        }
       }
     });
 
-    client.on("error", function (err) {
-      console.error("❌ Error:", err);
+    const logVolume = [], logTinggi = [], logSuhu = [];
+    const limitTime = () => new Date(new Date().getTime() - 5 * 60 * 1000);
+
+    client.on("message", (topic, message) => {
+      const value = parseFloat(message.toString());
+      const now = new Date();
+      const limit = limitTime();
+
+      if (topic.endsWith("volume_avg")) {
+        chartVolume.data.labels.push(now);
+        chartVolume.data.datasets[0].data.push(value);
+        while (chartVolume.data.labels[0] < limit) {
+          chartVolume.data.labels.shift();
+          chartVolume.data.datasets[0].data.shift();
+        }
+        chartVolume.update();
+
+        logVolume.push({ time: now, value });
+        while (logVolume[0] && logVolume[0].time < limit) logVolume.shift();
+        document.getElementById("logVolume").innerHTML = logVolume.map(d =>
+          `<li>${d.time.toLocaleTimeString()} ➝ ${d.value.toFixed(2)} L</li>`
+        ).reverse().join('');
+      }
+
+      if (topic.endsWith("jarak_rata")) {
+        logTinggi.push({ time: now, value });
+        while (logTinggi[0] && logTinggi[0].time < limit) logTinggi.shift();
+        document.getElementById("logTinggi").innerHTML = logTinggi.map(d =>
+          `<li>${d.time.toLocaleTimeString()} ➝ ${d.value.toFixed(2)} cm</li>`
+        ).reverse().join('');
+      }
+
+      if (topic.endsWith("suhu")) {
+        logSuhu.push({ time: now, value });
+        while (logSuhu[0] && logSuhu[0].time < limit) logSuhu.shift();
+        document.getElementById("logSuhu").innerHTML = logSuhu.map(d =>
+          `<li>${d.time.toLocaleTimeString()} ➝ ${d.value.toFixed(2)} °C</li>`
+        ).reverse().join('');
+      }
     });
   </script>
 
