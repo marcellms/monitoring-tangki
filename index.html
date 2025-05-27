@@ -17,7 +17,7 @@
     }
     .status {
       text-align: center;
-      margin-bottom: 20px;
+      margin-bottom: 10px;
       font-size: 18px;
     }
     table {
@@ -62,6 +62,7 @@
 <h1>📊 Dashboard Monitoring Tangki HVE</h1>
 
 <div class="status" id="status">🔄 Menyambungkan ke MQTT...</div>
+<div class="status" id="lastUpdate">📅 Terakhir update: -</div>
 
 <div class="current-values">
   <div>🌡️ Suhu: <span id="suhuNow">0</span> °C</div>
@@ -93,6 +94,7 @@
   });
 
   const status = document.getElementById("status");
+  const lastUpdate = document.getElementById("lastUpdate");
   const logTable = document.getElementById("logTable").getElementsByTagName("tbody")[0];
   const suhuNow = document.getElementById("suhuNow");
   const tinggiNow = document.getElementById("tinggiNow");
@@ -100,10 +102,19 @@
   const volumeIsiNow = document.getElementById("volumeIsiNow");
 
   let tinggi = 0, volume = 0, suhu = 0, volumeIsi = 0;
+  let lastLoggedMinute = null;
 
   client.on("connect", () => {
     status.innerHTML = "✅ MQTT Terhubung!";
     client.subscribe("wemos123/sensor/#");
+  });
+
+  client.on("error", (error) => {
+    status.innerHTML = "❌ Koneksi Gagal: " + error.message;
+  });
+
+  client.on("close", () => {
+    status.innerHTML = "⚠️ Koneksi Terputus. Mencoba ulang...";
   });
 
   client.on("message", (topic, message) => {
@@ -114,6 +125,7 @@
     if (topic.endsWith("volume_pengisian")) volumeIsi = val;
 
     updateValueDisplays();
+    lastUpdate.innerHTML = "📅 Terakhir update: " + new Date().toLocaleTimeString();
   });
 
   function updateValueDisplays() {
@@ -126,7 +138,8 @@
   function updateTable() {
     const now = new Date();
     const menit = now.getMinutes();
-    if (menit % 5 === 0 && now.getSeconds() === 0) {
+    if (menit % 5 === 0 && now.getSeconds() === 0 && menit !== lastLoggedMinute) {
+      lastLoggedMinute = menit;
       const waktu = now.toLocaleTimeString();
       const row = logTable.insertRow(0);
       row.insertCell(0).innerText = waktu;
@@ -134,7 +147,8 @@
       row.insertCell(2).innerText = volume.toFixed(2);
       row.insertCell(3).innerText = suhu.toFixed(2);
       row.insertCell(4).innerText = volumeIsi.toFixed(2);
-      if (logTable.rows.length > 20) logTable.deleteRow(20);
+
+      saveLogToStorage();
     }
   }
 
@@ -154,6 +168,39 @@
     downloadLink.href = window.URL.createObjectURL(csvFile);
     downloadLink.click();
   }
+
+  function loadLogFromStorage() {
+    const saved = localStorage.getItem("logData");
+    const savedDate = localStorage.getItem("logDate");
+    const today = new Date().toISOString().split("T")[0];
+
+    if (saved && savedDate === today) {
+      const rows = JSON.parse(saved);
+      rows.forEach(data => {
+        const row = logTable.insertRow(-1);
+        data.forEach((cell, i) => {
+          row.insertCell(i).innerText = cell;
+        });
+      });
+    } else {
+      localStorage.setItem("logData", "[]");
+      localStorage.setItem("logDate", today);
+    }
+  }
+
+  function saveLogToStorage() {
+    const rows = [];
+    for (let i = 0; i < logTable.rows.length; i++) {
+      const row = logTable.rows[i];
+      const cols = row.querySelectorAll("td");
+      const rowData = Array.from(cols).map(td => td.innerText);
+      rows.push(rowData);
+    }
+    localStorage.setItem("logData", JSON.stringify(rows));
+  }
+
+  // Load saat halaman pertama kali dibuka
+  loadLogFromStorage();
 </script>
 
 </body>
