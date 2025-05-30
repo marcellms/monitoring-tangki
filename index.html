@@ -68,7 +68,6 @@
   <div>🌡️ Suhu: <span id="suhuNow">0</span> °C</div>
   <div>📏 Tinggi: <span id="tinggiNow">0</span> cm</div>
   <div>🛢️ Volume: <span id="volumeNow">0</span> L</div>
-  <div>⚙️ Volume Isi: <span id="volumeIsiNow">0</span> L</div>
 </div>
 
 <h2>📄 Log Data (Tiap 5 Menit)</h2>
@@ -79,7 +78,6 @@
       <th>Tinggi (cm)</th>
       <th>Volume (L)</th>
       <th>Suhu (°C)</th>
-      <th>Volume Isi (L)</th>
     </tr>
   </thead>
   <tbody></tbody>
@@ -99,9 +97,8 @@
   const suhuNow = document.getElementById("suhuNow");
   const tinggiNow = document.getElementById("tinggiNow");
   const volumeNow = document.getElementById("volumeNow");
-  const volumeIsiNow = document.getElementById("volumeIsiNow");
 
-  let tinggi = 0, volume = 0, suhu = 0, volumeIsi = 0;
+  let tinggi = 0, volume = 0, suhu = 0;
   let lastLoggedMinute = null;
 
   client.on("connect", () => {
@@ -118,21 +115,25 @@
   });
 
   client.on("message", (topic, message) => {
-    const val = parseFloat(message.toString());
-    if (topic.endsWith("jarak_rata")) tinggi = val;
-    if (topic.endsWith("volume_avg")) volume = val;
-    if (topic.endsWith("suhu")) suhu = val;
-    if (topic.endsWith("volume_pengisian")) volumeIsi = val;
+    try {
+      const val = parseFloat(message.toString());
+      if (isNaN(val)) return;
 
-    updateValueDisplays();
-    lastUpdate.innerHTML = "📅 Terakhir update: " + new Date().toLocaleTimeString();
+      if (topic.endsWith("jarak_rata")) tinggi = val;
+      if (topic.endsWith("volume_avg")) volume = val;
+      if (topic.endsWith("suhu")) suhu = val;
+
+      updateValueDisplays();
+      lastUpdate.innerHTML = "📅 Terakhir update: " + new Date().toLocaleTimeString();
+    } catch (e) {
+      console.error("Error parsing message:", e);
+    }
   });
 
   function updateValueDisplays() {
     suhuNow.innerText = suhu.toFixed(2);
     tinggiNow.innerText = tinggi.toFixed(2);
     volumeNow.innerText = volume.toFixed(2);
-    volumeIsiNow.innerText = volumeIsi.toFixed(2);
   }
 
   function updateTable() {
@@ -146,8 +147,6 @@
       row.insertCell(1).innerText = tinggi.toFixed(2);
       row.insertCell(2).innerText = volume.toFixed(2);
       row.insertCell(3).innerText = suhu.toFixed(2);
-      row.insertCell(4).innerText = volumeIsi.toFixed(2);
-
       saveLogToStorage();
     }
   }
@@ -162,7 +161,7 @@
       for (let j = 0; j < cols.length; j++) row.push('"' + cols[j].innerText + '"');
       csv.push(row.join(","));
     }
-    const csvFile = new Blob([csv.join("\n")], { type: "text/csv" });
+    const csvFile = new Blob(["\uFEFF" + csv.join("\n")], { type: "text/csv;charset=utf-8;" });
     const downloadLink = document.createElement("a");
     downloadLink.download = "log_data_tangki.csv";
     downloadLink.href = window.URL.createObjectURL(csvFile);
@@ -199,7 +198,6 @@
     localStorage.setItem("logData", JSON.stringify(rows));
   }
 
-  // Load saat halaman pertama kali dibuka
   loadLogFromStorage();
 </script>
 
