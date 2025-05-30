@@ -115,19 +115,13 @@
   });
 
   client.on("message", (topic, message) => {
-    try {
-      const val = parseFloat(message.toString());
-      if (isNaN(val)) return;
+    const val = parseFloat(message.toString());
+    if (topic.endsWith("jarak_rata")) tinggi = val;
+    if (topic.endsWith("volume_avg")) volume = val;
+    if (topic.endsWith("suhu")) suhu = val;
 
-      if (topic.endsWith("jarak_rata")) tinggi = val;
-      if (topic.endsWith("volume_avg")) volume = val;
-      if (topic.endsWith("suhu")) suhu = val;
-
-      updateValueDisplays();
-      lastUpdate.innerHTML = "📅 Terakhir update: " + new Date().toLocaleTimeString();
-    } catch (e) {
-      console.error("Error parsing message:", e);
-    }
+    updateValueDisplays();
+    lastUpdate.innerHTML = "📅 Terakhir update: " + new Date().toLocaleTimeString();
   });
 
   function updateValueDisplays() {
@@ -161,7 +155,7 @@
       for (let j = 0; j < cols.length; j++) row.push('"' + cols[j].innerText + '"');
       csv.push(row.join(","));
     }
-    const csvFile = new Blob(["\uFEFF" + csv.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const csvFile = new Blob([csv.join("\n")], { type: "text/csv" });
     const downloadLink = document.createElement("a");
     downloadLink.download = "log_data_tangki.csv";
     downloadLink.href = window.URL.createObjectURL(csvFile);
