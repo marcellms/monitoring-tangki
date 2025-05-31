@@ -66,7 +66,7 @@
 
 <div class="current-values">
   <div>🌡️ Suhu: <span id="suhuNow">0</span> °C</div>
-  <div>📏 Tinggi: <span id="tinggiNow">0</span> mm</div>
+  <div>📏 Tinggi: <span id="tinggiNow">0</span> cm</div>
   <div>🛢️ Volume: <span id="volumeNow">0</span> L</div>
 </div>
 
@@ -75,7 +75,7 @@
   <thead>
     <tr>
       <th>Waktu</th>
-      <th>Tinggi (mm)</th>
+      <th>Tinggi (cm)</th>
       <th>Volume (L)</th>
       <th>Suhu (°C)</th>
     </tr>
@@ -126,8 +126,8 @@
 
   function updateValueDisplays() {
     suhuNow.innerText = suhu.toFixed(2);
-    tinggiNow.innerText = tinggi.toFixed(2);
-    volumeNow.innerText = volume.toFixed(2);
+    tinggiNow.innerText = Math.round(tinggi / 10);   // mm ke cm, tanpa koma
+    volumeNow.innerText = Math.round(volume);        // tanpa koma
   }
 
   function updateTable() {
@@ -135,11 +135,11 @@
     const menit = now.getMinutes();
     if (menit % 5 === 0 && now.getSeconds() === 0 && menit !== lastLoggedMinute) {
       lastLoggedMinute = menit;
-      const waktu = now.toLocaleTimeString();
+      const waktu = now.toLocaleTimeString('id-ID', { hour12: false });
       const row = logTable.insertRow(0);
       row.insertCell(0).innerText = waktu;
-      row.insertCell(1).innerText = tinggi.toFixed(2);
-      row.insertCell(2).innerText = volume.toFixed(2);
+      row.insertCell(1).innerText = Math.round(tinggi / 10);   // mm ke cm, tanpa koma
+      row.insertCell(2).innerText = Math.round(volume);        // tanpa koma
       row.insertCell(3).innerText = suhu.toFixed(2);
       saveLogToStorage();
     }
@@ -182,18 +182,4 @@
   }
 
   function saveLogToStorage() {
-    const rows = [];
-    for (let i = 0; i < logTable.rows.length; i++) {
-      const row = logTable.rows[i];
-      const cols = row.querySelectorAll("td");
-      const rowData = Array.from(cols).map(td => td.innerText);
-      rows.push(rowData);
-    }
-    localStorage.setItem("logData", JSON.stringify(rows));
-  }
-
-  loadLogFromStorage();
-</script>
-
-</body>
-</html>
+    const
