@@ -126,8 +126,8 @@
 
   function updateValueDisplays() {
     suhuNow.innerText = suhu.toFixed(2);
-    tinggiNow.innerText = Math.round(tinggi / 10);   // mm ke cm, tanpa koma
-    volumeNow.innerText = Math.round(volume);        // tanpa koma
+    tinggiNow.innerText = Math.round(tinggi / 10);  // mm ke cm tanpa desimal
+    volumeNow.innerText = Math.round(volume);       // tanpa desimal
   }
 
   function updateTable() {
@@ -135,11 +135,11 @@
     const menit = now.getMinutes();
     if (menit % 5 === 0 && now.getSeconds() === 0 && menit !== lastLoggedMinute) {
       lastLoggedMinute = menit;
-      const waktu = now.toLocaleTimeString('id-ID', { hour12: false });
+      const waktu = now.toLocaleTimeString();
       const row = logTable.insertRow(0);
       row.insertCell(0).innerText = waktu;
-      row.insertCell(1).innerText = Math.round(tinggi / 10);   // mm ke cm, tanpa koma
-      row.insertCell(2).innerText = Math.round(volume);        // tanpa koma
+      row.insertCell(1).innerText = Math.round(tinggi / 10);
+      row.insertCell(2).innerText = Math.round(volume);
       row.insertCell(3).innerText = suhu.toFixed(2);
       saveLogToStorage();
     }
@@ -182,4 +182,18 @@
   }
 
   function saveLogToStorage() {
-    const
+    const rows = [];
+    for (let i = 0; i < logTable.rows.length; i++) {
+      const row = logTable.rows[i];
+      const cols = row.querySelectorAll("td");
+      const rowData = Array.from(cols).map(td => td.innerText);
+      rows.push(rowData);
+    }
+    localStorage.setItem("logData", JSON.stringify(rows));
+  }
+
+  loadLogFromStorage();
+</script>
+
+</body>
+</html>
